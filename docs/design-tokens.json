@@ -1,0 +1,22 @@
+{
+  "colors": {
+    "background": "rgb(255, 255, 255)",
+    "text": "rgb(0, 0, 0)",
+    "primary": "rgb(216, 58, 46)",
+    "primaryText": "rgb(0, 0, 0)"
+  },
+  "fonts": {
+    "body": "sans-serif",
+    "heading": "Manrope, \"Manrope Placeholder\", sans-serif"
+  },
+  "typography": {
+    "h1Size": "70px",
+    "h1Weight": "700",
+    "bodySize": "12px",
+    "bodyWeight": "400"
+  },
+  "radius": {
+    "button": "8px",
+    "card": "0px"
+  }
+}

@@ -1,0 +1,1 @@
+export default function Page() { return <div className="space-y-4"><div><h1 className="text-3xl font-bold tracking-tight capitalize" style={{ fontFamily: 'Manrope, sans-serif' }}>settings</h1><p className="text-muted-foreground">This module is currently being built.</p></div></div> }

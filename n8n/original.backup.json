@@ -1,0 +1,498 @@
+{
+  "name": "Learn secure webhook APIs with authentication and Supabase integration",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "07aaa04d-6c73-416f-82e2-1e6ededeacc4",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "5029ae4f-cddf-4ea3-887b-24dfe0bd4526",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        992,
+        368
+      ],
+      "webhookId": "07aaa04d-6c73-416f-82e2-1e6ededeacc4",
+      "typeVersion": 2.1
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "07aaa04d-6c73-416f-82e2-1e6ededeacc4",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "9722f40e-5f71-4e2f-b774-30abaf2cd12b",
+      "name": "Webhook1",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        992,
+        672
+      ],
+      "webhookId": "07aaa04d-6c73-416f-82e2-1e6ededeacc4",
+      "typeVersion": 2.1
+    },
+    {
+      "parameters": {
+        "httpMethod": "PUT",
+        "path": "07aaa04d-6c73-416f-82e2-1e6ededeacc4",
+        "options": {}
+      },
+      "id": "61ab48f4-cbc4-4fe6-b999-5c8179c2f199",
+      "name": "Webhook2",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        992,
+        1808
+      ],
+      "webhookId": "07aaa04d-6c73-416f-82e2-1e6ededeacc4",
+      "typeVersion": 2.1
+    },
+    {
+      "parameters": {
+        "httpMethod": "PATCH",
+        "path": "07aaa04d-6c73-416f-82e2-1e6ededeacc4",
+        "responseMode": "streaming",
+        "options": {
+          "allowedOrigins": "*",
+          "ipWhitelist": ""
+        }
+      },
+      "id": "52473972-d31a-4d2d-b7bd-4021b218dbf1",
+      "name": "Webhook3",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        992,
+        960
+      ],
+      "webhookId": "07aaa04d-6c73-416f-82e2-1e6ededeacc4",
+      "typeVersion": 2.1
+    },
+    {
+      "parameters": {
+        "httpMethod": "DELETE",
+        "path": "07aaa04d-6c73-416f-82e2-1e6ededeacc4",
+        "options": {}
+      },
+      "id": "977d58d2-21f2-456e-8c32-188f4058d8e5",
+      "name": "Webhook4",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        992,
+        1248
+      ],
+      "webhookId": "07aaa04d-6c73-416f-82e2-1e6ededeacc4",
+      "typeVersion": 2.1
+    },
+    {
+      "parameters": {
+        "httpMethod": "HEAD",
+        "path": "07aaa04d-6c73-416f-82e2-1e6ededeacc4",
+        "options": {}
+      },
+      "id": "6cb10c72-df1e-4b00-a616-1b814d39e49f",
+      "name": "Webhook5",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        992,
+        1536
+      ],
+      "webhookId": "07aaa04d-6c73-416f-82e2-1e6ededeacc4",
+      "typeVersion": 2.1
+    },
+    {
+      "parameters": {
+        "content": "## GET → \n“Retrieve data without making changes. Think queries or health checks.”",
+        "height": 272,
+        "width": 272,
+        "color": 7
+      },
+      "id": "82826a07-84c3-415b-8253-dbb7098da016",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        928,
+        240
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## POST → \n“Send new data/events. Most webhooks from apps use POST.”",
+        "height": 272,
+        "width": 272,
+        "color": 7
+      },
+      "id": "2895700d-5086-4d05-9048-d4038cdf387f",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        928,
+        544
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## PUT → \n“Replace a whole resource with new data. Idempotent.”",
+        "height": 272,
+        "width": 256,
+        "color": 7
+      },
+      "id": "34949301-c2dc-4c6f-9630-765bf6e8237e",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        928,
+        1696
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## PATCH → \n“Update part of a resource. Send only the fields that changed.”",
+        "height": 272,
+        "width": 272,
+        "color": 7
+      },
+      "id": "2876d5a1-b3e8-41dc-9619-d91fe8bac16e",
+      "name": "Sticky Note4",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        928,
+        832
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## DELETE → \n“Remove a resource. Repeating the call has the same result.”",
+        "height": 272,
+        "width": 272,
+        "color": 7
+      },
+      "id": "083b92a1-d4cd-46bb-a0b3-4db1f24dbffd",
+      "name": "Sticky Note5",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        928,
+        1120
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## HEAD → \n“Like GET but no body — used for checks/headers only.”",
+        "height": 272,
+        "width": 256,
+        "color": 7
+      },
+      "id": "ffda96a3-68fc-4388-88d5-375a39a4cea0",
+      "name": "Sticky Note6",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        928,
+        1408
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "demo_contacts",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "email",
+              "keyValue": "={{ $json.query.email }}"
+            }
+          ]
+        }
+      },
+      "id": "d11d5a46-2b3e-4e49-beb5-4923f828492a",
+      "name": "Get a row",
+      "type": "n8n-nodes-base.supabase",
+      "position": [
+        1312,
+        368
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "supabaseApi": {
+          "id": "V8O33LSd8sJmwVDm",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "edbd8d72-79ea-4101-900e-2635b047300f",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        1584,
+        368
+      ],
+      "typeVersion": 1.4
+    },
+    {
+      "parameters": {
+        "tableId": "demo_contacts",
+        "dataToSend": "autoMapInputData",
+        "inputsToIgnore": "id"
+      },
+      "id": "f8d8f340-c194-4c4e-a308-d5c95e8533b9",
+      "name": "Create a row",
+      "type": "n8n-nodes-base.supabase",
+      "position": [
+        1584,
+        672
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "supabaseApi": {
+          "id": "V8O33LSd8sJmwVDm",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ $json.body }}",
+        "options": {}
+      },
+      "id": "5999b69a-5b9f-4f55-9bf3-f579dfe869a1",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        1312,
+        672
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ $json.body }}",
+        "options": {}
+      },
+      "id": "c04fc7eb-e43a-48bd-a979-ed423b52b9f3",
+      "name": "Edit Fields1",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        1312,
+        960
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "7ec4b8ac-5b1a-4b31-9759-f8b7ed070178",
+      "name": "Respond to Webhook1",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        1824,
+        672
+      ],
+      "typeVersion": 1.4
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "0d50f8f4-df4d-448f-9c05-8e2043e8a8d2",
+      "name": "Respond to Webhook2",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        1824,
+        960
+      ],
+      "typeVersion": 1.4
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "demo_contacts",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
+        "dataToSend": "autoMapInputData"
+      },
+      "id": "481f146d-0d14-4b40-beeb-3f56c548d9cc",
+      "name": "Update a row",
+      "type": "n8n-nodes-base.supabase",
+      "position": [
+        1584,
+        960
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "supabaseApi": {
+          "id": "V8O33LSd8sJmwVDm",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "tableId": "demo_contacts",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.query.id }}"
+            }
+          ]
+        }
+      },
+      "id": "ae559e34-c048-4ab7-82d6-5e5f34d0f5d5",
+      "name": "Delete a row",
+      "type": "n8n-nodes-base.supabase",
+      "position": [
+        1312,
+        1248
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "supabaseApi": {
+          "id": "V8O33LSd8sJmwVDm",
+          "name": "Supabase account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook3": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook4": {
+      "main": [
+        [
+          {
+            "node": "Delete a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a row": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Update a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a row": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "8707ead0-fd18-4d6c-9341-1103e76e08ab",
+  "meta": {
+    "templateId": "8258",
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4e5c14efa635f7230558a2d8b195d39df85ef5219301451f731ff2c1566986c6"
+  },
+  "nodeGroups": [],
+  "id": "b5D6iApw0iIMB6He",
+  "tags": []
+}

@@ -1,0 +1,1332 @@
+{
+  "name": "ElevenLabs Agent Tools",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 1. check_availability\nGET `/webhook/agent/check_availability`",
+        "height": 200,
+        "width": 280,
+        "color": 7
+      },
+      "id": "a2e37c00-5326-4bdd-9604-c3f6593d639f",
+      "name": "Note a2e37c00",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -320,
+        -40
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "agent/check_availability",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "19ce17e5-b6f6-4cfb-8ba5-929239d26451",
+      "name": "WH check_availability",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "19ce17e5-b6f6-4cfb-8ba5-929239d26451"
+    },
+    {
+      "parameters": {
+        "jsCode": "function rawInput() {\n  const item = $input.first().json;\n  let body = item.body;\n  if (typeof body === 'string') {\n    try { body = JSON.parse(body || '{}'); } catch (e) { body = {}; }\n  }\n  body = body || {};\n  const query = item.query || {};\n  return Object.assign({}, query, body);\n}\n\nfunction asBool(v) {\n  if (v === true || v === false) return v;\n  const s = String(v == null ? '' : v).trim().toLowerCase();\n  return s === 'true' || s === '1' || s === 'yes';\n}\n\nfunction asInt(v) {\n  if (v === undefined || v === null || v === '') return null;\n  const n = parseInt(v, 10);\n  return Number.isNaN(n) ? null : n;\n}\n\nfunction splitName(name) {\n  const parts = String(name || '').trim().split(/\\s+/).filter(Boolean);\n  if (!parts.length) return { first_name: 'Guest', last_name: 'Customer' };\n  if (parts.length === 1) return { first_name: parts[0], last_name: parts[0] };\n  return { first_name: parts[0], last_name: parts.slice(1).join(' ') };\n}\n\nfunction accessoriesList(v) {\n  if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter(Boolean);\n  if (v == null || v === '') return [];\n  return String(v).split(',').map((x) => x.trim()).filter(Boolean);\n}\n\nfunction mapPriority(v) {\n  const s = String(v || '').trim().toLowerCase();\n  if (s === 'low') return 'low';\n  if (s === 'high' || s === 'urgent') return s === 'urgent' ? 'urgent' : 'high';\n  return 'normal';\n}\n\nfunction envelope(ok, status, message, reference, data) {\n  return { ok, status, message, reference: reference || null, data: data || null };\n}\n\nfunction channelFrom(p) {\n  return asBool(p.is_text_only) ? 'chat' : 'voice';\n}\n\nfunction clientIp() {\n  const headers = $input.first().json.headers || {};\n  return headers['x-forwarded-for'] || headers['x-real-ip'] || 'unknown';\n}\n\nfunction productFields(p) {\n  const raw = p.tent_style_or_package || p.selected_products || p.tent_style || p.package_name || '';\n  const name = String(raw).trim();\n  const accessories = accessoriesList(p.accessories);\n  return {\n    tent_style: name || null,\n    package_name: name || null,\n    accessories,\n  };\n}\n\nconst p = rawInput();\nconst date = String(p.date || p.event_date || '').trim();\nconst missing = [];\nif (!date) missing.push('date');\nif (missing.length) {\n  return [{ json: {\n    valid: false,\n    http_status: 422,\n    error_body: envelope(false, 'validation_error', 'Please provide the event date as YYYY-MM-DD.', null, null),\n    payload: null, channel: channelFrom(p), idempotency_key: '', client_ip: clientIp()\n  }}];\n}\nconst products = productFields(p);\nconst payload = {\n  conversation_id: p.conversation_id || ('n8n-' + String($execution.id)),\n  is_text_only: asBool(p.is_text_only),\n  event_date: date,\n  guest_count: asInt(p.guest_count),\n  tent_style: products.tent_style,\n  package_name: products.package_name,\n  accessories: products.accessories,\n};\nreturn [{ json: {\n  valid: true,\n  http_status: 200,\n  error_body: null,\n  payload,\n  channel: channelFrom(p),\n  idempotency_key: 'availability:' + (payload.conversation_id || 'none') + ':' + date,\n  client_ip: clientIp()\n}}];\n"
+      },
+      "id": "7ade794a-3df9-494d-aea7-155e78f59592",
+      "name": "Map Availability",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.valid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "4dadf68e-a4e1-4d83-8412-a75bb39e9262",
+      "name": "IF Availability Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        520,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "availability_table",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "date",
+              "keyValue": "={{ $json.payload.event_date || $json.payload.date }}"
+            }
+          ]
+        }
+      },
+      "id": "6546a45c-4a14-4ff8-be87-d04be160267b",
+      "name": "RPC Availability",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        780,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "V8O33LSd8sJmwVDm",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.body || $json) }}",
+        "responseCode": "={{ $json.http_status || 200 }}",
+        "options": {}
+      },
+      "id": "d2937a4c-f47e-476a-8596-2dec2461ce80",
+      "name": "Respond Availability",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1040,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.error_body) }}",
+        "responseCode": "={{ $json.http_status }}",
+        "options": {}
+      },
+      "id": "2e06210e-a1cc-425c-8629-39d0c4ee296c",
+      "name": "Respond Availability Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        780,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 2. create_quote_request\nPOST `/webhook/agent/create_quote_request`",
+        "height": 200,
+        "width": 280,
+        "color": 7
+      },
+      "id": "9609d60b-5bdc-4eb2-8967-b843e85489f1",
+      "name": "Note 9609d60b",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -320,
+        240
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "agent/create_quote_request",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "9ed09ae0-ec82-4b97-9f17-0e9462375eab",
+      "name": "WH create_quote_request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        280
+      ],
+      "webhookId": "9ed09ae0-ec82-4b97-9f17-0e9462375eab"
+    },
+    {
+      "parameters": {
+        "jsCode": "function rawInput() {\n  const item = $input.first().json;\n  let body = item.body;\n  if (typeof body === 'string') {\n    try { body = JSON.parse(body || '{}'); } catch (e) { body = {}; }\n  }\n  body = body || {};\n  const query = item.query || {};\n  return Object.assign({}, query, body);\n}\n\nfunction asBool(v) {\n  if (v === true || v === false) return v;\n  const s = String(v == null ? '' : v).trim().toLowerCase();\n  return s === 'true' || s === '1' || s === 'yes';\n}\n\nfunction asInt(v) {\n  if (v === undefined || v === null || v === '') return null;\n  const n = parseInt(v, 10);\n  return Number.isNaN(n) ? null : n;\n}\n\nfunction splitName(name) {\n  const parts = String(name || '').trim().split(/\\s+/).filter(Boolean);\n  if (!parts.length) return { first_name: 'Guest', last_name: 'Customer' };\n  if (parts.length === 1) return { first_name: parts[0], last_name: parts[0] };\n  return { first_name: parts[0], last_name: parts.slice(1).join(' ') };\n}\n\nfunction accessoriesList(v) {\n  if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter(Boolean);\n  if (v == null || v === '') return [];\n  return String(v).split(',').map((x) => x.trim()).filter(Boolean);\n}\n\nfunction mapPriority(v) {\n  const s = String(v || '').trim().toLowerCase();\n  if (s === 'low') return 'low';\n  if (s === 'high' || s === 'urgent') return s === 'urgent' ? 'urgent' : 'high';\n  return 'normal';\n}\n\nfunction envelope(ok, status, message, reference, data) {\n  return { ok, status, message, reference: reference || null, data: data || null };\n}\n\nfunction channelFrom(p) {\n  return asBool(p.is_text_only) ? 'chat' : 'voice';\n}\n\nfunction clientIp() {\n  const headers = $input.first().json.headers || {};\n  return headers['x-forwarded-for'] || headers['x-real-ip'] || 'unknown';\n}\n\nfunction productFields(p) {\n  const raw = p.tent_style_or_package || p.selected_products || p.tent_style || p.package_name || '';\n  const name = String(raw).trim();\n  const accessories = accessoriesList(p.accessories);\n  return {\n    tent_style: name || null,\n    package_name: name || null,\n    accessories,\n  };\n}\n\nconst p = rawInput();\nconst name = String(p.name || '').trim();\nconst phone = String(p.phone || '').replace(/\\D/g, '');\nconst email = String(p.email || '').trim().toLowerCase();\nconst missing = [];\nif (!name) missing.push('name');\nif (!phone) missing.push('phone');\nif (!email) missing.push('email');\nif (missing.length) {\n  return [{ json: {\n    valid: false,\n    http_status: 422,\n    error_body: envelope(false, 'validation_error', 'I need the customer name, phone, and email to record a quote request.', null, null),\n    payload: null, channel: channelFrom(p), idempotency_key: '', client_ip: clientIp()\n  }}];\n}\nconst names = splitName(name);\nconst products = productFields(p);\nconst eventDate = String(p.event_date || p.date || '').trim() || null;\nconst payload = {\n  conversation_id: p.conversation_id || ('n8n-' + String($execution.id)),\n  is_text_only: asBool(p.is_text_only),\n  customer: { first_name: names.first_name, last_name: names.last_name, phone, email, name },\n  event: {\n    type: p.event_type || null,\n    date: eventDate,\n    guest_count: asInt(p.guest_count),\n    town: p.venue_area || null,\n    address: p.venue_area || null,\n  },\n  tent_style: products.tent_style,\n  package_name: products.package_name,\n  accessories: products.accessories,\n  notes: p.customer_notes || null,\n};\nreturn [{ json: {\n  valid: true,\n  http_status: 200,\n  error_body: null,\n  payload,\n  channel: channelFrom(p),\n  idempotency_key: 'quote-request:' + (payload.conversation_id || email) + ':' + (eventDate || 'nodate'),\n  client_ip: clientIp()\n}}];\n"
+      },
+      "id": "b23cc44e-e0cb-420c-8ea8-b59881be377b",
+      "name": "Map Quote",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.valid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "f2c2f7ce-1433-423f-a1b0-4985eca64262",
+      "name": "IF Quote Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        520,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "tableId": "quote_request_table",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "payload",
+              "fieldValue": "={{ $json.payload }}"
+            },
+            {
+              "fieldId": "conversation_id",
+              "fieldValue": "={{ $json.payload.conversation_id }}"
+            }
+          ]
+        }
+      },
+      "id": "54e5aab5-1a86-46af-92a4-d98b0ba7fdd9",
+      "name": "RPC Quote",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        780,
+        280
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "V8O33LSd8sJmwVDm",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.body || $json) }}",
+        "responseCode": "={{ $json.http_status || 200 }}",
+        "options": {}
+      },
+      "id": "7bdb5285-388e-42c5-995e-f07be1ddfa63",
+      "name": "Respond Quote",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1040,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.error_body) }}",
+        "responseCode": "={{ $json.http_status }}",
+        "options": {}
+      },
+      "id": "b1aa63b0-85ff-4451-9e52-eca599eae20e",
+      "name": "Respond Quote Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        780,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 3. create_booking_request\nPOST \u2014 availability check, then booking",
+        "height": 240,
+        "width": 280,
+        "color": 7
+      },
+      "id": "8b3ba053-17c9-4f71-82ee-7add51322f85",
+      "name": "Note 8b3ba053",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -320,
+        520
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "agent/create_booking_request",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "e4cfe883-f385-4203-bbfe-13f01409ea2f",
+      "name": "WH create_booking_request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        560
+      ],
+      "webhookId": "e4cfe883-f385-4203-bbfe-13f01409ea2f"
+    },
+    {
+      "parameters": {
+        "jsCode": "function rawInput() {\n  const item = $input.first().json;\n  let body = item.body;\n  if (typeof body === 'string') {\n    try { body = JSON.parse(body || '{}'); } catch (e) { body = {}; }\n  }\n  body = body || {};\n  const query = item.query || {};\n  return Object.assign({}, query, body);\n}\n\nfunction asBool(v) {\n  if (v === true || v === false) return v;\n  const s = String(v == null ? '' : v).trim().toLowerCase();\n  return s === 'true' || s === '1' || s === 'yes';\n}\n\nfunction asInt(v) {\n  if (v === undefined || v === null || v === '') return null;\n  const n = parseInt(v, 10);\n  return Number.isNaN(n) ? null : n;\n}\n\nfunction splitName(name) {\n  const parts = String(name || '').trim().split(/\\s+/).filter(Boolean);\n  if (!parts.length) return { first_name: 'Guest', last_name: 'Customer' };\n  if (parts.length === 1) return { first_name: parts[0], last_name: parts[0] };\n  return { first_name: parts[0], last_name: parts.slice(1).join(' ') };\n}\n\nfunction accessoriesList(v) {\n  if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter(Boolean);\n  if (v == null || v === '') return [];\n  return String(v).split(',').map((x) => x.trim()).filter(Boolean);\n}\n\nfunction mapPriority(v) {\n  const s = String(v || '').trim().toLowerCase();\n  if (s === 'low') return 'low';\n  if (s === 'high' || s === 'urgent') return s === 'urgent' ? 'urgent' : 'high';\n  return 'normal';\n}\n\nfunction envelope(ok, status, message, reference, data) {\n  return { ok, status, message, reference: reference || null, data: data || null };\n}\n\nfunction channelFrom(p) {\n  return asBool(p.is_text_only) ? 'chat' : 'voice';\n}\n\nfunction clientIp() {\n  const headers = $input.first().json.headers || {};\n  return headers['x-forwarded-for'] || headers['x-real-ip'] || 'unknown';\n}\n\nfunction productFields(p) {\n  const raw = p.tent_style_or_package || p.selected_products || p.tent_style || p.package_name || '';\n  const name = String(raw).trim();\n  const accessories = accessoriesList(p.accessories);\n  return {\n    tent_style: name || null,\n    package_name: name || null,\n    accessories,\n  };\n}\n\nconst p = rawInput();\nconst name = String(p.name || '').trim();\nconst phone = String(p.phone || '').replace(/\\D/g, '');\nconst email = String(p.email || '').trim().toLowerCase();\nconst eventDate = String(p.event_date || p.date || '').trim();\nconst venue = String(p.venue_address || '').trim();\nconst guestCount = asInt(p.guest_count);\nconst selected = String(p.selected_products || p.tent_style_or_package || '').trim();\nconst confirmed = asBool(p.customer_confirmed_readback);\nconst missing = [];\nif (!name) missing.push('name');\nif (!phone) missing.push('phone');\nif (!email) missing.push('email');\nif (!eventDate) missing.push('event_date');\nif (!venue) missing.push('venue_address');\nif (!guestCount) missing.push('guest_count');\nif (!selected) missing.push('selected_products');\nif (!confirmed) missing.push('customer_confirmed_readback');\nif (missing.length) {\n  return [{ json: {\n    valid: false,\n    http_status: 422,\n    error_body: envelope(false, 'validation_error', 'Please confirm all booking details, including read-back confirmation, before I can submit the request.', null, { missing }),\n    payload: null, channel: channelFrom(p), idempotency_key: '', client_ip: clientIp()\n  }}];\n}\nconst names = splitName(name);\nconst products = productFields(p);\nconst payload = {\n  conversation_id: p.conversation_id || ('n8n-' + String($execution.id)),\n  is_text_only: asBool(p.is_text_only),\n  customer_confirmed_readback: true,\n  customer: { first_name: names.first_name, last_name: names.last_name, phone, email, name },\n  event: {\n    type: p.event_type || null,\n    date: eventDate,\n    guest_count: guestCount,\n    town: venue,\n    address: venue,\n  },\n  tent_style: products.tent_style,\n  package_name: products.package_name,\n  accessories: products.accessories,\n  notes: p.customer_notes || null,\n  event_date: eventDate,\n};\nreturn [{ json: {\n  valid: true,\n  http_status: 200,\n  error_body: null,\n  payload,\n  channel: channelFrom(p),\n  idempotency_key: 'booking-request:' + (payload.conversation_id || email) + ':' + eventDate,\n  client_ip: clientIp()\n}}];\n"
+      },
+      "id": "e2cbae4b-8c3e-45cf-81dd-d7c1cc03cce6",
+      "name": "Map Booking",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.valid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "b0bb7ac0-763f-4ddc-892e-48d210c496ff",
+      "name": "IF Booking Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        520,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "availability_table",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "date",
+              "keyValue": "={{ $json.payload.event_date || $json.payload.date }}"
+            }
+          ]
+        }
+      },
+      "id": "30fdbfa3-5c80-4d6c-a1dd-fd5db4b1e9c6",
+      "name": "RPC Booking Availability",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        780,
+        560
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "V8O33LSd8sJmwVDm",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.available }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "be0f2d12-6e2d-43e7-842f-40fd356d4017",
+      "name": "IF Booking Date Open",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "tableId": "booking_request_table",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "payload",
+              "fieldValue": "={{ $json.payload }}"
+            },
+            {
+              "fieldId": "conversation_id",
+              "fieldValue": "={{ $json.payload.conversation_id }}"
+            }
+          ]
+        }
+      },
+      "id": "79739226-a834-4f12-b2ad-e0578bbff6ec",
+      "name": "RPC Booking Create",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1300,
+        560
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "V8O33LSd8sJmwVDm",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.body || $json) }}",
+        "responseCode": "={{ $json.http_status || 200 }}",
+        "options": {}
+      },
+      "id": "562d6181-c76a-48fa-8a03-edfc7404173c",
+      "name": "Respond Booking",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1560,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.error_body) }}",
+        "responseCode": "={{ $json.http_status }}",
+        "options": {}
+      },
+      "id": "628da07f-24b6-4628-b6b3-c8f6bbfbb518",
+      "name": "Respond Booking Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        780,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.body || $json) }}",
+        "responseCode": "={{ $json.http_status || 200 }}",
+        "options": {}
+      },
+      "id": "3f4f0e23-38c6-4bb7-b323-24b2196f9d9c",
+      "name": "Respond Booking Unavailable",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1300,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 4. create_change_request\nPOST \u2014 availability check, then change",
+        "height": 240,
+        "width": 280,
+        "color": 7
+      },
+      "id": "268c8267-43c3-4cf0-bd4d-1283fd287601",
+      "name": "Note 268c8267",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -320,
+        800
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "agent/create_change_request",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "9e4f816a-d74d-45d1-b314-d12c0e6fc8b5",
+      "name": "WH create_change_request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        840
+      ],
+      "webhookId": "9e4f816a-d74d-45d1-b314-d12c0e6fc8b5"
+    },
+    {
+      "parameters": {
+        "jsCode": "function rawInput() {\n  const item = $input.first().json;\n  let body = item.body;\n  if (typeof body === 'string') {\n    try { body = JSON.parse(body || '{}'); } catch (e) { body = {}; }\n  }\n  body = body || {};\n  const query = item.query || {};\n  return Object.assign({}, query, body);\n}\n\nfunction asBool(v) {\n  if (v === true || v === false) return v;\n  const s = String(v == null ? '' : v).trim().toLowerCase();\n  return s === 'true' || s === '1' || s === 'yes';\n}\n\nfunction asInt(v) {\n  if (v === undefined || v === null || v === '') return null;\n  const n = parseInt(v, 10);\n  return Number.isNaN(n) ? null : n;\n}\n\nfunction splitName(name) {\n  const parts = String(name || '').trim().split(/\\s+/).filter(Boolean);\n  if (!parts.length) return { first_name: 'Guest', last_name: 'Customer' };\n  if (parts.length === 1) return { first_name: parts[0], last_name: parts[0] };\n  return { first_name: parts[0], last_name: parts.slice(1).join(' ') };\n}\n\nfunction accessoriesList(v) {\n  if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter(Boolean);\n  if (v == null || v === '') return [];\n  return String(v).split(',').map((x) => x.trim()).filter(Boolean);\n}\n\nfunction mapPriority(v) {\n  const s = String(v || '').trim().toLowerCase();\n  if (s === 'low') return 'low';\n  if (s === 'high' || s === 'urgent') return s === 'urgent' ? 'urgent' : 'high';\n  return 'normal';\n}\n\nfunction envelope(ok, status, message, reference, data) {\n  return { ok, status, message, reference: reference || null, data: data || null };\n}\n\nfunction channelFrom(p) {\n  return asBool(p.is_text_only) ? 'chat' : 'voice';\n}\n\nfunction clientIp() {\n  const headers = $input.first().json.headers || {};\n  return headers['x-forwarded-for'] || headers['x-real-ip'] || 'unknown';\n}\n\nfunction productFields(p) {\n  const raw = p.tent_style_or_package || p.selected_products || p.tent_style || p.package_name || '';\n  const name = String(raw).trim();\n  const accessories = accessoriesList(p.accessories);\n  return {\n    tent_style: name || null,\n    package_name: name || null,\n    accessories,\n  };\n}\n\nconst p = rawInput();\nconst contact = String(p.contact_info || p.phone || p.email || '').trim();\nconst requested = String(p.requested_changes || '').trim();\nconst confirmed = asBool(p.customer_confirmed_readback);\nconst missing = [];\nif (!contact) missing.push('contact_info');\nif (!requested) missing.push('requested_changes');\nif (!confirmed) missing.push('customer_confirmed_readback');\nif (missing.length) {\n  return [{ json: {\n    valid: false,\n    http_status: 422,\n    error_body: envelope(false, 'validation_error', 'I need contact info, the requested changes, and confirmation of the read-back.', null, { missing }),\n    payload: null, channel: channelFrom(p), idempotency_key: '', client_ip: clientIp()\n  }}];\n}\nconst email = contact.includes('@') ? contact.toLowerCase() : (p.email || null);\nconst phone = contact.includes('@') ? (p.phone || null) : String(contact).replace(/\\D/g, '');\nconst names = splitName(p.name || '');\nconst lower = requested.toLowerCase();\nlet change_type = 'other';\nif (lower.includes('cancel')) change_type = 'cancel';\nelse if (lower.includes('resched') || lower.includes('date')) change_type = 'reschedule';\nelse if (lower.includes('guest')) change_type = 'change_guest_count';\nelse if (lower.includes('location') || lower.includes('address') || lower.includes('venue')) change_type = 'change_location';\nelse if (lower.includes('package')) change_type = 'change_package';\nelse if (lower.includes('add')) change_type = 'add_items';\nelse if (lower.includes('remove')) change_type = 'remove_items';\nconst eventDate = String(p.event_date || p.date || '').trim() || null;\nconst payload = {\n  conversation_id: p.conversation_id || ('n8n-' + String($execution.id)),\n  is_text_only: asBool(p.is_text_only),\n  customer_confirmed_readback: true,\n  booking_reference: p.booking_reference || null,\n  phone,\n  email,\n  last_name: names.last_name,\n  current_event_date: eventDate,\n  new_event_date: eventDate,\n  event_date: eventDate,\n  change_type,\n  details: requested,\n  requested_changes: { description: requested },\n};\nreturn [{ json: {\n  valid: true,\n  http_status: 200,\n  error_body: null,\n  payload,\n  channel: channelFrom(p),\n  idempotency_key: 'change-request:' + (payload.conversation_id || contact) + ':' + (p.booking_reference || 'noref'),\n  client_ip: clientIp(),\n  skip_availability: !eventDate || change_type === 'cancel' || change_type === 'remove_items' || change_type === 'change_location'\n}}];\n"
+      },
+      "id": "f8459f53-82d1-4b56-9c8f-17dc2cf4b0ca",
+      "name": "Map Change",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        840
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.valid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "5799c4ed-8092-4673-9c9e-272421246e5b",
+      "name": "IF Change Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        520,
+        840
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.skip_availability }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "081c4f5d-7edd-41c9-9381-8405e06dc868",
+      "name": "IF Skip Change Availability",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        780,
+        840
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "availability_table",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "date",
+              "keyValue": "={{ $json.payload.event_date || $json.payload.date }}"
+            }
+          ]
+        }
+      },
+      "id": "41c5a7eb-97cf-4632-a212-e019d411e0b2",
+      "name": "RPC Change Availability",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        980
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "V8O33LSd8sJmwVDm",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.available }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "25a75a37-40a4-4181-97ff-c5342fd7fcdf",
+      "name": "IF Change Date Open",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1300,
+        980
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "tableId": "change_request_table",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "payload",
+              "fieldValue": "={{ $json.payload }}"
+            },
+            {
+              "fieldId": "conversation_id",
+              "fieldValue": "={{ $json.payload.conversation_id }}"
+            }
+          ]
+        }
+      },
+      "id": "267ffc22-2f89-409c-a490-13b4101413fb",
+      "name": "RPC Change Create",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1300,
+        840
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "V8O33LSd8sJmwVDm",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.body || $json) }}",
+        "responseCode": "={{ $json.http_status || 200 }}",
+        "options": {}
+      },
+      "id": "e04d5e39-acc7-44a1-bd74-5b7d07dc70d4",
+      "name": "Respond Change",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1560,
+        840
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.error_body) }}",
+        "responseCode": "={{ $json.http_status }}",
+        "options": {}
+      },
+      "id": "be416a96-7429-4881-a915-0162914f21f0",
+      "name": "Respond Change Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        520,
+        980
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.body || $json) }}",
+        "responseCode": "={{ $json.http_status || 200 }}",
+        "options": {}
+      },
+      "id": "1544ecef-cf99-4c58-ab5d-2701f05f04af",
+      "name": "Respond Change Unavailable",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1560,
+        980
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 5. request_owner_consultation\nPOST `/webhook/agent/request_owner_consultation`",
+        "height": 200,
+        "width": 280,
+        "color": 7
+      },
+      "id": "26c48ce7-3721-43c4-a60d-1466a6a768c7",
+      "name": "Note 26c48ce7",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -320,
+        1080
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "agent/request_owner_consultation",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "2bb35af1-7cbc-4cd5-8241-16419b7981a2",
+      "name": "WH request_owner_consultation",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        1120
+      ],
+      "webhookId": "2bb35af1-7cbc-4cd5-8241-16419b7981a2"
+    },
+    {
+      "parameters": {
+        "jsCode": "function rawInput() {\n  const item = $input.first().json;\n  let body = item.body;\n  if (typeof body === 'string') {\n    try { body = JSON.parse(body || '{}'); } catch (e) { body = {}; }\n  }\n  body = body || {};\n  const query = item.query || {};\n  return Object.assign({}, query, body);\n}\n\nfunction asBool(v) {\n  if (v === true || v === false) return v;\n  const s = String(v == null ? '' : v).trim().toLowerCase();\n  return s === 'true' || s === '1' || s === 'yes';\n}\n\nfunction asInt(v) {\n  if (v === undefined || v === null || v === '') return null;\n  const n = parseInt(v, 10);\n  return Number.isNaN(n) ? null : n;\n}\n\nfunction splitName(name) {\n  const parts = String(name || '').trim().split(/\\s+/).filter(Boolean);\n  if (!parts.length) return { first_name: 'Guest', last_name: 'Customer' };\n  if (parts.length === 1) return { first_name: parts[0], last_name: parts[0] };\n  return { first_name: parts[0], last_name: parts.slice(1).join(' ') };\n}\n\nfunction accessoriesList(v) {\n  if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter(Boolean);\n  if (v == null || v === '') return [];\n  return String(v).split(',').map((x) => x.trim()).filter(Boolean);\n}\n\nfunction mapPriority(v) {\n  const s = String(v || '').trim().toLowerCase();\n  if (s === 'low') return 'low';\n  if (s === 'high' || s === 'urgent') return s === 'urgent' ? 'urgent' : 'high';\n  return 'normal';\n}\n\nfunction envelope(ok, status, message, reference, data) {\n  return { ok, status, message, reference: reference || null, data: data || null };\n}\n\nfunction channelFrom(p) {\n  return asBool(p.is_text_only) ? 'chat' : 'voice';\n}\n\nfunction clientIp() {\n  const headers = $input.first().json.headers || {};\n  return headers['x-forwarded-for'] || headers['x-real-ip'] || 'unknown';\n}\n\nfunction productFields(p) {\n  const raw = p.tent_style_or_package || p.selected_products || p.tent_style || p.package_name || '';\n  const name = String(raw).trim();\n  const accessories = accessoriesList(p.accessories);\n  return {\n    tent_style: name || null,\n    package_name: name || null,\n    accessories,\n  };\n}\n\nconst p = rawInput();\nconst name = String(p.name || '').trim();\nconst phone = String(p.phone || '').replace(/\\D/g, '');\nconst email = String(p.email || '').trim().toLowerCase();\nconst topic = String(p.topic || '').trim();\nconst missing = [];\nif (!name) missing.push('name');\nif (!phone) missing.push('phone');\nif (!email) missing.push('email');\nif (!topic) missing.push('topic');\nif (missing.length) {\n  return [{ json: {\n    valid: false,\n    http_status: 422,\n    error_body: envelope(false, 'validation_error', 'I need name, phone, email, and the topic to request an owner consultation.', null, { missing }),\n    payload: null, channel: channelFrom(p), idempotency_key: '', client_ip: clientIp()\n  }}];\n}\nconst payload = {\n  conversation_id: p.conversation_id || ('n8n-' + String($execution.id)),\n  is_text_only: asBool(p.is_text_only),\n  customer: { name, phone, email },\n  topic,\n  summary: topic + (p.preferred_contact_method ? (' Preferred contact: ' + p.preferred_contact_method) : ''),\n  urgency: mapPriority(p.urgency),\n  preferred_contact_method: p.preferred_contact_method || null,\n};\nreturn [{ json: {\n  valid: true,\n  http_status: 200,\n  error_body: null,\n  payload,\n  channel: channelFrom(p),\n  idempotency_key: 'owner-consultation:' + (payload.conversation_id || phone),\n  client_ip: clientIp()\n}}];\n"
+      },
+      "id": "aba8f399-b94c-4a16-852d-1d6087b4250f",
+      "name": "Map Owner",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        1120
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.valid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "f017aaee-33c0-41af-a06f-fa800f0db073",
+      "name": "IF Owner Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        520,
+        1120
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "tableId": "owner_consultation_table",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "payload",
+              "fieldValue": "={{ $json.payload }}"
+            },
+            {
+              "fieldId": "conversation_id",
+              "fieldValue": "={{ $json.payload.conversation_id }}"
+            }
+          ]
+        }
+      },
+      "id": "dfb39175-6bbf-484e-b18c-58d6a21276a9",
+      "name": "RPC Owner",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        780,
+        1120
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "V8O33LSd8sJmwVDm",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.body || $json) }}",
+        "responseCode": "={{ $json.http_status || 200 }}",
+        "options": {}
+      },
+      "id": "5d4be905-a6fa-4ede-b944-b186f8c52363",
+      "name": "Respond Owner",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1040,
+        1120
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.error_body) }}",
+        "responseCode": "={{ $json.http_status }}",
+        "options": {}
+      },
+      "id": "d2bcd2d6-4c45-481c-b2fb-c0ef5f49ccaa",
+      "name": "Respond Owner Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        780,
+        1260
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 6. flag_for_human_review\nPOST `/webhook/agent/flag_for_human_review`",
+        "height": 200,
+        "width": 280,
+        "color": 7
+      },
+      "id": "4ae6188c-134a-460c-ba29-4fed022512fc",
+      "name": "Note 4ae6188c",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -320,
+        1360
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "agent/flag_for_human_review",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "385d20b0-7ac0-439a-beec-3623c1a74ee5",
+      "name": "WH flag_for_human_review",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        1400
+      ],
+      "webhookId": "385d20b0-7ac0-439a-beec-3623c1a74ee5"
+    },
+    {
+      "parameters": {
+        "jsCode": "function rawInput() {\n  const item = $input.first().json;\n  let body = item.body;\n  if (typeof body === 'string') {\n    try { body = JSON.parse(body || '{}'); } catch (e) { body = {}; }\n  }\n  body = body || {};\n  const query = item.query || {};\n  return Object.assign({}, query, body);\n}\n\nfunction asBool(v) {\n  if (v === true || v === false) return v;\n  const s = String(v == null ? '' : v).trim().toLowerCase();\n  return s === 'true' || s === '1' || s === 'yes';\n}\n\nfunction asInt(v) {\n  if (v === undefined || v === null || v === '') return null;\n  const n = parseInt(v, 10);\n  return Number.isNaN(n) ? null : n;\n}\n\nfunction splitName(name) {\n  const parts = String(name || '').trim().split(/\\s+/).filter(Boolean);\n  if (!parts.length) return { first_name: 'Guest', last_name: 'Customer' };\n  if (parts.length === 1) return { first_name: parts[0], last_name: parts[0] };\n  return { first_name: parts[0], last_name: parts.slice(1).join(' ') };\n}\n\nfunction accessoriesList(v) {\n  if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter(Boolean);\n  if (v == null || v === '') return [];\n  return String(v).split(',').map((x) => x.trim()).filter(Boolean);\n}\n\nfunction mapPriority(v) {\n  const s = String(v || '').trim().toLowerCase();\n  if (s === 'low') return 'low';\n  if (s === 'high' || s === 'urgent') return s === 'urgent' ? 'urgent' : 'high';\n  return 'normal';\n}\n\nfunction envelope(ok, status, message, reference, data) {\n  return { ok, status, message, reference: reference || null, data: data || null };\n}\n\nfunction channelFrom(p) {\n  return asBool(p.is_text_only) ? 'chat' : 'voice';\n}\n\nfunction clientIp() {\n  const headers = $input.first().json.headers || {};\n  return headers['x-forwarded-for'] || headers['x-real-ip'] || 'unknown';\n}\n\nfunction productFields(p) {\n  const raw = p.tent_style_or_package || p.selected_products || p.tent_style || p.package_name || '';\n  const name = String(raw).trim();\n  const accessories = accessoriesList(p.accessories);\n  return {\n    tent_style: name || null,\n    package_name: name || null,\n    accessories,\n  };\n}\n\nconst p = rawInput();\nconst reason = String(p.reason || '').trim();\nconst summary = String(p.summary || '').trim();\nconst severity = String(p.severity || '').trim().toLowerCase();\nconst missing = [];\nif (!reason) missing.push('reason');\nif (!summary) missing.push('summary');\nif (!severity) missing.push('severity');\nif (missing.length) {\n  return [{ json: {\n    valid: false,\n    http_status: 422,\n    error_body: envelope(false, 'validation_error', 'I need a reason, summary, and severity to flag this for human review.', null, { missing }),\n    payload: null, channel: channelFrom(p), idempotency_key: '', client_ip: clientIp()\n  }}];\n}\nconst contact = String(p.contact_info || '').trim();\nconst email = contact.includes('@') ? contact.toLowerCase() : null;\nconst phone = contact && !contact.includes('@') ? String(contact).replace(/\\D/g, '') : null;\nconst payload = {\n  conversation_id: p.conversation_id || ('n8n-' + String($execution.id)),\n  is_text_only: asBool(p.is_text_only),\n  reason,\n  summary,\n  severity: mapPriority(severity),\n  error_context: p.error_context || null,\n  customer: { name: p.name || null, phone, email },\n};\nreturn [{ json: {\n  valid: true,\n  http_status: 200,\n  error_body: null,\n  payload,\n  channel: channelFrom(p),\n  idempotency_key: 'human-review:' + (payload.conversation_id || reason),\n  client_ip: clientIp()\n}}];\n"
+      },
+      "id": "fd1255fc-5366-444e-b9f3-69081b91f1a8",
+      "name": "Map Review",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        1400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.valid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "3a231fb9-fc0f-4f14-84a9-891f5e020473",
+      "name": "IF Review Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        520,
+        1400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "tableId": "human_review_table",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "payload",
+              "fieldValue": "={{ $json.payload }}"
+            },
+            {
+              "fieldId": "conversation_id",
+              "fieldValue": "={{ $json.payload.conversation_id }}"
+            }
+          ]
+        }
+      },
+      "id": "0d6b9f25-5b36-4b51-bc01-8d8516fd34db",
+      "name": "RPC Review",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        780,
+        1400
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "V8O33LSd8sJmwVDm",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.body || $json) }}",
+        "responseCode": "={{ $json.http_status || 200 }}",
+        "options": {}
+      },
+      "id": "c008232c-68b2-4f46-9b21-90e553cdec2a",
+      "name": "Respond Review",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1040,
+        1400
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.error_body) }}",
+        "responseCode": "={{ $json.http_status }}",
+        "options": {}
+      },
+      "id": "cca8cac1-2397-49e8-9a6c-4fe9bb5662eb",
+      "name": "Respond Review Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        780,
+        1540
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "WH check_availability": {
+      "main": [
+        [
+          {
+            "node": "Map Availability",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Availability": {
+      "main": [
+        [
+          {
+            "node": "IF Availability Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Availability Valid": {
+      "main": [
+        [
+          {
+            "node": "RPC Availability",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Availability Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RPC Availability": {
+      "main": [
+        [
+          {
+            "node": "Respond Availability",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WH create_quote_request": {
+      "main": [
+        [
+          {
+            "node": "Map Quote",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Quote": {
+      "main": [
+        [
+          {
+            "node": "IF Quote Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Quote Valid": {
+      "main": [
+        [
+          {
+            "node": "RPC Quote",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Quote Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RPC Quote": {
+      "main": [
+        [
+          {
+            "node": "Respond Quote",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WH create_booking_request": {
+      "main": [
+        [
+          {
+            "node": "Map Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Booking": {
+      "main": [
+        [
+          {
+            "node": "IF Booking Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Booking Valid": {
+      "main": [
+        [
+          {
+            "node": "RPC Booking Availability",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Booking Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RPC Booking Availability": {
+      "main": [
+        [
+          {
+            "node": "IF Booking Date Open",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Booking Date Open": {
+      "main": [
+        [
+          {
+            "node": "RPC Booking Create",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Booking Unavailable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RPC Booking Create": {
+      "main": [
+        [
+          {
+            "node": "Respond Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WH create_change_request": {
+      "main": [
+        [
+          {
+            "node": "Map Change",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Change": {
+      "main": [
+        [
+          {
+            "node": "IF Change Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Change Valid": {
+      "main": [
+        [
+          {
+            "node": "IF Skip Change Availability",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Change Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Skip Change Availability": {
+      "main": [
+        [
+          {
+            "node": "RPC Change Create",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RPC Change Availability",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RPC Change Availability": {
+      "main": [
+        [
+          {
+            "node": "IF Change Date Open",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Change Date Open": {
+      "main": [
+        [
+          {
+            "node": "RPC Change Create",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Change Unavailable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RPC Change Create": {
+      "main": [
+        [
+          {
+            "node": "Respond Change",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WH request_owner_consultation": {
+      "main": [
+        [
+          {
+            "node": "Map Owner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Owner": {
+      "main": [
+        [
+          {
+            "node": "IF Owner Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Owner Valid": {
+      "main": [
+        [
+          {
+            "node": "RPC Owner",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Owner Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RPC Owner": {
+      "main": [
+        [
+          {
+            "node": "Respond Owner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WH flag_for_human_review": {
+      "main": [
+        [
+          {
+            "node": "Map Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Review": {
+      "main": [
+        [
+          {
+            "node": "IF Review Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Review Valid": {
+      "main": [
+        [
+          {
+            "node": "RPC Review",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Review Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RPC Review": {
+      "main": [
+        [
+          {
+            "node": "Respond Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "927a3a8f-6cf0-4b24-b97c-45e05576f3e3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4e5c14efa635f7230558a2d8b195d39df85ef5219301451f731ff2c1566986c6"
+  },
+  "nodeGroups": [],
+  "id": "d4b96fe3-5877-47e0-90c8-135279b4c71f",
+  "tags": []
+}
